@@ -24,13 +24,46 @@ def haversine(lat1, lon1, lat2, lon2):
 
     return R * c
 
-# STEP 3: Function to calculate distance from new PIN
+# STEP 3: Function to find closest pincode when exact match not found
+def find_closest_pincode(target_pin):
+    target_pin = str(target_pin)
+    available_pins = list(pincode_dict.keys())
+    
+    # Try exact match first
+    if target_pin in pincode_dict:
+        return target_pin
+    
+    # Find closest by string similarity (numeric proximity)
+    try:
+        target_num = int(target_pin)
+        closest_pin = min(available_pins, key=lambda x: abs(int(x) - target_num))
+        return closest_pin
+    except ValueError:
+        # If not numeric, return first available pincode
+        return available_pins[0] if available_pins else None
+
+# STEP 4: Function to calculate distance from new PIN
 def distance_from_pincode(input_pin, reference_pin):
-    if input_pin not in pincode_dict or reference_pin not in pincode_dict:
+    input_pin = str(input_pin)
+    reference_pin = str(reference_pin)
+    
+    # Find closest available pincodes if exact matches don't exist
+    actual_input_pin = find_closest_pincode(input_pin)
+    actual_reference_pin = find_closest_pincode(reference_pin)
+    
+    if actual_input_pin is None or actual_reference_pin is None:
         return None
-    lat1, lon1 = pincode_dict[input_pin]
-    lat2, lon2 = pincode_dict[reference_pin]
-    return haversine(lat1, lon1, lat2, lon2)
+    
+    lat1, lon1 = pincode_dict[actual_input_pin]
+    lat2, lon2 = pincode_dict[actual_reference_pin]
+    
+    distance = haversine(lat1, lon1, lat2, lon2)
+    
+    # Print which pincodes were actually used if different from input
+    if actual_input_pin != input_pin or actual_reference_pin != reference_pin:
+        print(f"Using closest available: {input_pin} -> {actual_input_pin}, {reference_pin} -> {actual_reference_pin}")
+    
+    return distance
 
 # Example usage:
 input_pin = "500067"
