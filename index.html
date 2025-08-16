@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>Distance Calculator</title>
+  </head>
+  <body
+    class="min-h-screen bg-white flex items-center justify-center text-black"
+  >
+    <div
+      class="bg-white p-8 rounded-lg border border-gray-200 shadow-sm w-full max-w-sm"
+    >
+      <h1 class="text-center text-black mb-8 text-xl font-semibold">
+        Distance Calculator
+      </h1>
+      <form id="distanceForm">
+        <div class="mb-6">
+          <label
+            for="originPin"
+            class="block mb-2 text-black text-sm font-medium"
+            >Origin PIN Code:</label
+          >
+          <input
+            type="text"
+            id="originPin"
+            placeholder="Enter origin PIN code"
+            maxlength="6"
+            required
+            class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-white transition-colors focus:outline-none focus:border-black focus:ring-2 focus:ring-black/5"
+          />
+        </div>
+        <div class="mb-6">
+          <label
+            for="destinationPin"
+            class="block mb-2 text-black text-sm font-medium"
+            >Destination PIN Code:</label
+          >
+          <input
+            type="text"
+            id="destinationPin"
+            placeholder="Enter destination PIN code"
+            maxlength="6"
+            required
+            class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-white transition-colors focus:outline-none focus:border-black focus:ring-2 focus:ring-black/5"
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full px-4 py-2 bg-black text-white border-none rounded-md text-sm font-medium cursor-pointer transition-colors hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Calculate Distance
+        </button>
+      </form>
+      <div id="result"></div>
+    </div>
+
+    <script type="module">
+      import { env } from "./secret.js";
+      const GOOGLE_API_KEY = env.GOOGLE_API_KEY;
+
+      async function getDistance(originPin, destinationPin) {
+        if (!originPin || !destinationPin)
+          throw new Error("Both PIN codes are required.");
+
+        const origin = `India ${originPin}`;
+        const destination = `India ${destinationPin}`;
+
+        const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(
+          origin
+        )}&destinations=${encodeURIComponent(
+          destination
+        )}&key=${GOOGLE_API_KEY}`;
+
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (
+            !data.rows ||
+            !data.rows[0] ||
+            !data.rows[0].elements ||
+            !data.rows[0].elements[0]
+          ) {
+            throw new Error(
+              `Invalid API response structure: ${JSON.stringify(data)}`
+            );
+          }
+
+          const element = data.rows[0].elements[0];
+
+          if (element.status !== "OK") {
+            throw new Error(`Distance API Error: ${element.status}`);
+          }
+
+          const distanceText = element.distance.text;
+          const distanceKm = parseFloat(distanceText.replace(" km", ""));
+
+          return distanceKm;
+        } catch (error) {
+          throw new Error(`Failed to fetch distance: ${error.message}`);
+        }
+      }
+
+      document
+        .getElementById("distanceForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const originPin = document.getElementById("originPin").value;
+          const destinationPin =
+            document.getElementById("destinationPin").value;
+          const resultDiv = document.getElementById("result");
+
+          if (!/^\d{6}$/.test(originPin) || !/^\d{6}$/.test(destinationPin)) {
+            resultDiv.innerHTML =
+              '<div class="mt-6 px-3 py-2 rounded-md text-center text-sm border border-red-200 bg-red-50 text-red-600">Please enter valid 6-digit PIN codes</div>';
+            return;
+          }
+
+          resultDiv.innerHTML =
+            '<div class="mt-6 px-3 py-2 rounded-md text-center text-sm border border-gray-200 bg-gray-50 text-black">Calculating distance...</div>';
+
+          try {
+            const distance = await getDistance(originPin, destinationPin);
+            resultDiv.innerHTML = `
+              <div class="mt-6 px-3 py-2 rounded-md text-center text-sm border border-green-200 bg-green-50 text-green-600">
+                Distance: ${distance} km<br>
+                <small class="text-green-500">From ${originPin} to ${destinationPin}</small>
+              </div>
+            `;
+          } catch (error) {
+            resultDiv.innerHTML = `
+              <div class="mt-6 px-3 py-2 rounded-md text-center text-sm border border-red-200 bg-red-50 text-red-600">
+                Error: ${error.message}
+              </div>
+            `;
+          }
+        });
+    </script>
+  </body>
+</html>
