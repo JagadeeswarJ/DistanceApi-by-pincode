@@ -1,5 +1,4 @@
 require("dotenv").config();
-const fetch = require("node-fetch");
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
 /**
